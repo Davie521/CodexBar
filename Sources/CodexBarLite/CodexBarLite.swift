@@ -14,7 +14,7 @@ enum CodexBarLiteMain {
             Self.renderPreview(to: URL(fileURLWithPath: arguments[index + 1]))
             return
         }
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(example: arguments.contains("--demo") ? .example() : nil)
         app.delegate = delegate
         withExtendedLifetime(delegate) { app.run() }
     }
@@ -47,32 +47,38 @@ private struct PreviewClient: UsageFetching {
 }
 
 @MainActor
-private final class AppDelegate: NSObject, NSApplicationDelegate {
+private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
-    private let popover = NSPopover()
+    private let menu = NSMenu()
+    private let refreshItem = NSMenuItem()
+    private let remainingItem = NSMenuItem()
+    private var cardHost: QuotaMenuHostingView?
     private let model: UsageModel
     private var pollingTask: Task<Void, Never>?
 
-    override init() {
-        let authURL = CodexCredentials.authURL(
-            home: FileManager.default.homeDirectoryForCurrentUser,
-            environment: ProcessInfo.processInfo.environment)
-        self.model = UsageModel(client: CodexUsageClient(
-            credentials: { try CodexCredentials.read(from: authURL) },
-            transport: EphemeralUsageTransport()))
+    init(example: UsageSnapshot? = nil) {
+        if let example {
+            // Interactive UI validation uses the real native menu, but never reads a login or sends a request.
+            self.model = UsageModel(client: PreviewClient(), example: example)
+        } else {
+            let authURL = CodexCredentials.authURL(
+                home: FileManager.default.homeDirectoryForCurrentUser,
+                environment: ProcessInfo.processInfo.environment)
+            self.model = UsageModel(client: CodexUsageClient(
+                credentials: { try CodexCredentials.read(from: authURL) },
+                transport: EphemeralUsageTransport()))
+        }
         super.init()
     }
 
     func applicationDidFinishLaunching(_: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = "CodexBarLite"
-        item.button?.target = self
-        item.button?.action = #selector(self.togglePopover)
         item.button?.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         self.statusItem = item
-        self.popover.behavior = .transient
-        self.popover.animates = false
-        self.popover.contentViewController = NSHostingController(rootView: UsagePanel(model: self.model))
+        self.configureMenu()
+        // Let NSStatusItem/NSMenu own positioning on every display, as in upstream CodexBar.
+        item.menu = self.menu
         self.observeModel()
         self.pollingTask = Task { [weak self] in
             var nextRefresh = Date.distantPast
@@ -83,6 +89,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
                     nextRefresh = Date.now.addingTimeInterval(300)
                 }
                 self.updateStatusItem()
+                self.updateMenuPresentation()
                 do {
                     try await Task.sleep(for: .seconds(60))
                 } catch { return }
@@ -97,6 +104,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     private func observeModel() {
         withObservationTracking {
             self.updateStatusItem()
+            self.updateMenuPresentation()
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in self?.observeModel() }
         }
@@ -144,12 +152,109 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         return image
     }
 
-    @objc private func togglePopover() {
-        if self.popover.isShown {
-            self.popover.performClose(nil)
-        } else if let button = self.statusItem?.button {
-            self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApplication.shared.activate(ignoringOtherApps: true)
+    private func configureMenu() {
+        self.menu.autoenablesItems = false
+        self.menu.delegate = self
+        let host = QuotaMenuHostingView(rootView: UsagePanel(model: self.model))
+        self.cardHost = host
+        let card = NSMenuItem()
+        card.view = host
+        card.isEnabled = false
+        self.menu.addItem(card)
+        self.menu.addItem(.separator())
+        self.refreshItem.target = self
+        self.refreshItem.action = #selector(self.refreshUsage)
+        self.refreshItem.keyEquivalent = "r"
+        self.menu.addItem(self.refreshItem)
+
+        let more = NSMenuItem(title: "更多", action: nil, keyEquivalent: "")
+        let actions = NSMenu()
+        actions.autoenablesItems = false
+        self.remainingItem.title = "显示剩余额度"
+        self.remainingItem.target = self
+        self.remainingItem.action = #selector(self.toggleRemaining)
+        actions.addItem(self.remainingItem)
+        actions.addItem(.separator())
+        self.addAction("打开 Codex", selector: #selector(self.openCodex), to: actions)
+        self.addAction("查看项目", selector: #selector(self.openProject), to: actions)
+        actions.addItem(.separator())
+        self.addAction("退出 CodexBar Lite", selector: #selector(self.quit), key: "q", to: actions)
+        more.submenu = actions
+        self.menu.addItem(more)
+    }
+
+    private func addAction(_ title: String, selector: Selector, key: String = "", to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: selector, keyEquivalent: key)
+        item.target = self
+        menu.addItem(item)
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        menu.appearance = NSApplication.shared.effectiveAppearance
+        self.updateMenuPresentation()
+    }
+
+    private func updateMenuPresentation() {
+        self.remainingItem.state = self.model.showRemaining ? .on : .off
+        self.refreshItem.isEnabled = !self.model.isRefreshing && !self.model.isExample
+        if self.model.isRefreshing {
+            self.refreshItem.title = "正在刷新…"
+        } else if self.model.isExample {
+            self.refreshItem.title = "刷新额度 · 示例数据"
+        } else if let fetchedAt = self.model.snapshot?.fetchedAt {
+            let minutes = max(0, Int(Date.now.timeIntervalSince(fetchedAt) / 60))
+            let age = minutes == 0 ? "刚刚更新" : "\(minutes) 分钟前更新"
+            self.refreshItem.title = "刷新额度 · \(age)"
+        } else {
+            self.refreshItem.title = "刷新额度"
         }
+        self.cardHost?.fitContent()
+    }
+
+    @objc private func refreshUsage() {
+        Task { await self.model.refresh() }
+    }
+
+    @objc private func toggleRemaining() {
+        self.model.showRemaining.toggle()
+    }
+
+    @objc private func openCodex() {
+        AppActions.openCodex()
+    }
+
+    @objc private func openProject() {
+        AppActions.openProject()
+    }
+
+    @objc private func quit() {
+        NSApplication.shared.terminate(nil)
+    }
+}
+
+/// Reuses the measured intrinsic-size approach from upstream MenuHostingView.
+private final class QuotaMenuHostingView: NSHostingView<UsagePanel> {
+    private var measuredSize: NSSize?
+
+    override var allowsVibrancy: Bool {
+        true
+    }
+
+    override var acceptsFirstResponder: Bool {
+        false
+    }
+
+    override var intrinsicContentSize: NSSize {
+        self.measuredSize ?? super.intrinsicContentSize
+    }
+
+    func fitContent() {
+        self.measuredSize = nil
+        self.invalidateIntrinsicContentSize()
+        self.layoutSubtreeIfNeeded()
+        let size = self.fittingSize
+        self.measuredSize = NSSize(width: 280, height: max(1, ceil(size.height)))
+        self.setFrameSize(self.measuredSize ?? size)
+        self.invalidateIntrinsicContentSize()
     }
 }

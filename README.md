@@ -4,10 +4,11 @@ This fork of [steipete/CodexBar](https://github.com/steipete/CodexBar) keeps the
 
 - One menu-bar item with a quota percentage and the familiar two-bar meter.
 - Session and weekly allowances, remaining/used display, and reset countdowns.
-- Refresh every five minutes, a manual refresh button, and a small overflow menu.
+- Refresh every five minutes, with native refresh and More menu items.
+- An attached `NSMenu`, matching upstream positioning across displays, with a compact 280-point quota card.
 - No third-party dependencies in the default build. No browser import, Keychain access, background history scans, widgets, or updater.
 
-<img src="docs/codexbar-lite-preview.png" width="304" alt="CodexBar Lite with two quota bars and reset countdowns; example data." />
+<img src="docs/codexbar-lite-preview.png" width="280" alt="CodexBar Lite quota card with two usage bars and reset countdowns; example data. Native menu actions are outside this card preview." />
 
 The interface uses Simplified Chinese. It follows the account currently signed into Codex, using native `~/.codex/auth.json` (or an inherited `CODEX_HOME`) and the same `chatgpt.com/backend-api/wham/usage` endpoint as upstream. It does not write credentials or refresh tokens. If the login expires, open/sign in to Codex and refresh. API-key/PAT-only and Keychain-only logins are not supported by Lite.
 
@@ -31,6 +32,8 @@ Tests use synthetic credentials and stub transports; they do not contact a real 
 ```sh
 "CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-preview.png
 ```
+
+To inspect the actual native menu without accessing an account, quit Lite first and run `open "CodexBar Lite.app" --args --demo`. The menu is labeled as example data and manual refresh is disabled. Quit and relaunch without `--demo` to return to your real account.
 
 ## Upstream code
 

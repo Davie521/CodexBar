@@ -3,11 +3,11 @@ import CodexBarLiteCore
 import SwiftUI
 
 struct UsagePanel: View {
-    @Bindable var model: UsageModel
+    let model: UsageModel
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "terminal")
                         .font(.system(size: 17, weight: .medium))
@@ -44,59 +44,11 @@ struct UsagePanel: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 }
-
-                Divider()
-                HStack(spacing: 12) {
-                    Text(self.updateText(at: context.date))
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                    Button {
-                        Task { await self.model.refresh() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(self.model.isRefreshing || self.model.isExample)
-                    .help("刷新额度")
-                    .accessibilityLabel("刷新额度")
-
-                    if self.model.isExample {
-                        // ImageRenderer cannot draw AppKit-backed Menu controls; render the same icon offline.
-                        Image(systemName: "ellipsis")
-                    } else {
-                        Menu {
-                            Toggle("显示剩余额度", isOn: self.$model.showRemaining)
-                            Divider()
-                            Button("打开 Codex") { AppActions.openCodex() }
-                            Button("查看项目") { AppActions.openProject() }
-                            Divider()
-                            Button("退出 CodexBar Lite") { NSApplication.shared.terminate(nil) }
-                                .keyboardShortcut("q")
-                        } label: {
-                            Image(systemName: "ellipsis")
-                        }
-                        .menuStyle(.borderlessButton)
-                        .menuIndicator(.hidden)
-                        .fixedSize()
-                        .help("更多选项")
-                        .accessibilityLabel("更多选项")
-                    }
-                }
-                .font(.system(size: 12))
             }
-            .padding(16)
-            .frame(width: 304)
+            .padding(12)
+            .frame(width: 280)
+            .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private func updateText(at date: Date) -> String {
-        if self.model.isExample { return "预览数据" }
-        if self.model.isRefreshing { return "正在刷新…" }
-        guard let fetchedAt = self.model.snapshot?.fetchedAt else { return "每 5 分钟刷新" }
-        let minutes = max(0, Int(date.timeIntervalSince(fetchedAt) / 60))
-        if minutes == 0 { return "刚刚更新" }
-        return "\(minutes) 分钟前更新"
     }
 }
 
