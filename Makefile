@@ -11,7 +11,9 @@ start-debug:
 
 start-release: start
 
-restart: start
+restart:
+	$(MAKE) stop
+	$(MAKE) start
 
 stop:
 	pkill -x CodexBarLite || true
