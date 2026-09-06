@@ -1,4 +1,4 @@
-name: Monitor Upstream Changes
+name: Monitor Upstream Changes (reference)
 
 on:
   schedule:

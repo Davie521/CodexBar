@@ -1,4 +1,4 @@
-name: Release CLI
+name: Upstream Release CLI (reference)
 
 on:
   release:

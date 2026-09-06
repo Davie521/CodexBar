@@ -1,3 +1,47 @@
+# CodexBar Lite — Codex only
+
+This fork of [steipete/CodexBar](https://github.com/steipete/CodexBar) keeps the native menu-bar experience and reduces it to one compact Codex panel.
+
+- One menu-bar item with a quota percentage and the familiar two-bar meter.
+- Session and weekly allowances, remaining/used display, and reset countdowns.
+- Refresh every five minutes, a manual refresh button, and a small overflow menu.
+- No third-party dependencies in the default build. No browser import, Keychain access, background history scans, widgets, or updater.
+
+<img src="docs/codexbar-lite-preview.png" width="304" alt="CodexBar Lite with two quota bars and reset countdowns; example data." />
+
+The interface uses Simplified Chinese. It follows the account currently signed into Codex, using native `~/.codex/auth.json` (or an inherited `CODEX_HOME`) and the same `chatgpt.com/backend-api/wham/usage` endpoint as upstream. It does not write credentials or refresh tokens. If the login expires, open/sign in to Codex and refresh. API-key/PAT-only and Keychain-only logins are not supported by Lite.
+
+Only the primary session and weekly allowances are shown. Additional model-specific allowances, purchased credits, and organization spending controls remain features of the full upstream app. Missing quota data is shown as unavailable, never as 100% remaining. Failed refreshes clear the previous result; a passed reset time stays marked as awaiting an update until the server confirms it.
+
+## Build and run
+
+Requires macOS 14+ and Swift 6.2+ (Xcode command-line tools).
+
+```sh
+make test
+make check  # requires swiftformat and swiftlint
+make release
+open "CodexBar Lite.app"
+```
+
+The bundle has a separate identifier (`com.davie521.codexbar.lite`) and does not replace the Homebrew-installed CodexBar or use its updater. `brew install --cask codexbar` still installs the full upstream app, not this fork.
+
+Tests use synthetic credentials and stub transports; they do not contact a real account. An offline rendering path also avoids all credential access:
+
+```sh
+"CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-preview.png
+```
+
+## Upstream code
+
+The original sources, license, and Git history are retained. The small `CodexBarLiteCore` adapts the native credential parsing, authenticated usage request, and window normalization from upstream; `CodexBarLite` provides the compact AppKit/SwiftUI shell. Only these targets and their focused tests are part of the default package.
+
+For upstream development, `CODEXBAR_FULL=1 swift build`, `make test-full`, and `make check-full` select the original package and checks. The original CI/release workflow files are retained as references under `.github/upstream-*.yml`; the active workflow builds and tests Lite on macOS.
+
+---
+
+The following is the original project's documentation, for the full upstream build.
+
 # CodexBar 🎚️ — May your tokens never run out.
 
 > Every AI coding limit, in your menu bar.
