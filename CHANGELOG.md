@@ -4,6 +4,7 @@
 
 ### Fixed
 - Widgets: keep snapshot and stale token-history age labels advancing between timeline reloads, so paused widgets no longer retain fresh-looking timestamps (partial fix for #3339).
+- Pi and OMP cost history: keep the session cache intact across Linux refreshes by replacing it with one atomic write, preserving saved scan state, provider totals, pricing metadata, and timezone information.
 - Model pricing: keep the cached catalog readable when refreshing it on Linux, using one atomic write instead of a redundant file-replacement sequence (extracted from #3412). Thanks @WeGoToMars!
 - ElevenLabs: distinguish a missing API key from a rejected key, missing subscription-read permission, or access restrictions, including current and legacy API error formats (#3437). Thanks @benmillerat!
 - Command Code: keep the resolved subscription plan in memory for its billing period so a timed-out plan lookup still sizes the monthly credits row from fresh credits, and report that row as unavailable rather than untouched when no plan is known; rolling five-hour and weekly usage stay unaffected (#3441). Thanks @enieuwy!
