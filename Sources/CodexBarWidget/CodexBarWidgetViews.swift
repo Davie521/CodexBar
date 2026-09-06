@@ -255,6 +255,7 @@ private struct ProviderSwitcherRow: View {
                 Text(self.updatedAt, style: .relative)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
             }
         }
     }
@@ -817,6 +818,7 @@ private struct HeaderView: View {
             Text(self.updatedAt, style: .relative)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
         }
     }
 }
