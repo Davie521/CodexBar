@@ -3,6 +3,7 @@
 ## 0.56.7 — Unreleased
 
 ### Fixed
+- Model pricing: keep the cached catalog readable when refreshing it on Linux, using one atomic write instead of a redundant file-replacement sequence (extracted from #3412). Thanks @WeGoToMars!
 - ElevenLabs: distinguish a missing API key from a rejected key, missing subscription-read permission, or access restrictions, including current and legacy API error formats (#3437). Thanks @benmillerat!
 - Command Code: keep the resolved subscription plan in memory for its billing period so a timed-out plan lookup still sizes the monthly credits row from fresh credits, and report that row as unavailable rather than untouched when no plan is known; rolling five-hour and weekly usage stay unaffected (#3441). Thanks @enieuwy!
 - Moonshot: show China-region balances and deficits in CNY while retaining USD for international accounts (#3434, #3438). Thanks @SomSamantray and @doraemonke!
