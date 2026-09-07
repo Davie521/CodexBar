@@ -266,7 +266,7 @@ for macos_required in true false; do
 done
 
 # Check the actual aggregate dependency and shell argument, not summary text elsewhere in the workflow.
-python3 - "${ROOT_DIR}/.github/workflows/ci.yml" <<'PY'
+python3 - "${ROOT_DIR}/.github/upstream-ci.yml" <<'PY'
 import pathlib
 import re
 import shlex

@@ -108,7 +108,7 @@ run_harness() {
     --swift-command-arg=fake-swift
 }
 
-python3 - "${ROOT_DIR}/.github/workflows/ci.yml" <<'PY'
+python3 - "${ROOT_DIR}/.github/upstream-ci.yml" <<'PY'
 import pathlib
 import re
 import sys

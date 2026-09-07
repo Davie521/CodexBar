@@ -1,6 +1,6 @@
 ---
 name: release-codexbar
-description: "CodexBar release: versioning, notarization, appcast, Homebrew, post-release bump."
+description: "Release the retained full upstream CodexBar app through its signed/notarized Sparkle and Homebrew pipeline."
 ---
 
 # CodexBar Release
