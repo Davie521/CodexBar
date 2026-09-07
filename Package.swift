@@ -8,7 +8,7 @@ let useLocalSweetCookieKit =
 let sweetCookieKitDependency: Package.Dependency =
     useLocalSweetCookieKit && FileManager.default.fileExists(atPath: sweetCookieKitPath)
     ? .package(path: sweetCookieKitPath)
-    : .package(url: "https://github.com/steipete/SweetCookieKit", from: "0.5.2")
+    : .package(url: "https://github.com/steipete/SweetCookieKit", exact: "0.5.2")
 
 let sqlite3LibDir = ProcessInfo.processInfo.environment["CODEXBAR_SQLITE3_LIB_DIR"]?
     .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -61,11 +61,14 @@ func makePackage() -> Package {
             return products
         }(),
         dependencies: [
-            .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.3"),
-            .package(url: "https://github.com/steipete/Commander", from: "0.2.1"),
-            .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
-            .package(url: "https://github.com/apple/swift-log", from: "1.13.2"),
-            .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.4.0"),
+            .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.3"),
+            .package(url: "https://github.com/steipete/Commander", exact: "0.2.2"),
+            .package(url: "https://github.com/apple/swift-crypto.git", exact: "3.15.1"),
+            // swift-crypto's own transitive dependency. Declared here only to pin it: an exact
+            // pin on the parent still lets this float within the parent's declared range.
+            .package(url: "https://github.com/apple/swift-asn1.git", exact: "1.7.1"),
+            .package(url: "https://github.com/apple/swift-log", exact: "1.13.2"),
+            .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", exact: "2.4.0"),
             .package(url: "https://github.com/zats/Vortex", revision: "ef5392088d4aeb255c4eee83157dbdafcd31bf07"),
             sweetCookieKitDependency,
         ],

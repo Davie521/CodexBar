@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const approvedRootDocumentation = new Set(
-  ["README.md", "CHANGELOG.md", "LICENSE", "VISION.md"].map((relativePath) => path.join(repoRoot, relativePath)),
+  // AGENTS.md is this fork's primary agent brief and the target of the CLAUDE.md symlink, so
+  // docs/ is allowed to link it the same way it links README.md.
+  ["README.md", "AGENTS.md", "CHANGELOG.md", "LICENSE", "VISION.md"].map((relativePath) =>
+    path.join(repoRoot, relativePath),
+  ),
 );
 
 const readme = readText("README.md");
