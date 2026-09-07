@@ -44,4 +44,8 @@ docs/.astro/
 
 # Swift Package Manager metadata (leave sources tracked)
 # Packages/
-# Package.resolved
+# Derived here, not the source of truth. Package.swift returns two different packages (Lite by
+# default, the full app under CODEXBAR_FULL=1) while SwiftPM keeps a single lockfile slot, and it
+# discards a Package.resolved whose originHash does not match the manifest being evaluated. Full
+# build versions are therefore pinned exactly in Package.swift instead.
+Package.resolved
