@@ -10,9 +10,9 @@ struct UsagePanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "terminal")
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .accessibilityHidden(true)
-                    Text("Codex").font(.system(size: 16, weight: .semibold))
+                    Text("Codex").font(.system(size: 13, weight: .semibold))
                     Spacer()
                     if self.model.isExample {
                         Text("示例").font(.caption).foregroundStyle(.secondary)
@@ -27,10 +27,13 @@ struct UsagePanel: View {
                     }
                 }
 
-                if let snapshot = self.model.snapshot {
-                    ForEach(snapshot.windows) { window in
-                        QuotaRow(window: window, showRemaining: self.model.showRemaining, now: context.date)
-                    }
+                if let window = self.model.snapshot?.menuWindow {
+                    WeeklyQuotaView(window: window, showRemaining: self.model.showRemaining, now: context.date)
+                } else if self.model.snapshot != nil {
+                    Text("暂未提供周额度")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 } else if let failure = self.model.failure {
                     Text(failure.message)
                         .font(.system(size: 12))
@@ -45,14 +48,14 @@ struct UsagePanel: View {
                     .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 }
             }
-            .padding(12)
+            .padding(16)
             .frame(width: 280)
             .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
-private struct QuotaRow: View {
+private struct WeeklyQuotaView: View {
     let window: UsageWindow
     let showRemaining: Bool
     let now: Date
@@ -69,44 +72,70 @@ private struct QuotaRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(self.window.title).fontWeight(.medium)
-                Spacer()
-                Text(self.percent.formatted(.number.precision(.fractionLength(0))) + "%")
-                    .monospacedDigit()
-                Text(self.showRemaining ? "剩余" : "已用")
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .lastTextBaseline, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(self.showRemaining ? "每周剩余" : "每周已用")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text(self.percent.formatted(.number.precision(.fractionLength(0))) + "%")
+                        .font(.system(size: 32, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                }
+                .fixedSize()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("每周额度")
+                .accessibilityValue("\(Int(self.percent.rounded()))% \(self.showRemaining ? "剩余" : "已用")")
+
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(self.resetLabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text(self.resetText)
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .accessibilityElement(children: .combine)
             }
-            .font(.system(size: 12))
 
             GeometryReader { geometry in
-                Capsule().fill(.primary.opacity(0.08))
-                Capsule().fill(self.color)
-                    .frame(width: max(0, geometry.size.width * self.percent / 100))
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.primary.opacity(0.08))
+                    Capsule().fill(self.color)
+                        .frame(width: max(0, geometry.size.width * self.percent / 100))
+                }
             }
             .frame(height: 5)
-            .accessibilityLabel(self.window.title)
-            .accessibilityValue("\(Int(self.percent))% \(self.showRemaining ? "剩余" : "已用")")
+            .accessibilityHidden(true)
 
-            Text(self.resetText)
-                .font(.system(size: 10))
+            if let resetsAt = self.window.resetsAt {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.clockwise")
+                        .accessibilityHidden(true)
+                    (
+                        Text(resetsAt.formatted(.dateTime.month().day().weekday(.abbreviated)
+                                .hour().minute().locale(Locale(identifier: "zh_CN"))))
+                            + Text(" 重置"))
+                        .help("本地时间 · \(resetsAt.formatted(date: .complete, time: .shortened))")
+                }
+                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 
     private var resetText: String {
-        guard let resetsAt = self.window.resetsAt else { return "重置时间暂不可用" }
-        let seconds = resetsAt.timeIntervalSince(self.now)
-        if seconds <= 0 { return "已到重置时间，等待更新" }
-        let minutes = max(1, Int(ceil(seconds / 60)))
-        if minutes >= 1440 {
-            let days = minutes / 1440
-            let hours = (minutes % 1440) / 60
-            return "\(days) 天 \(hours) 小时后重置"
-        }
-        if minutes >= 60 { return "\(minutes / 60) 小时 \(minutes % 60) 分钟后重置" }
-        return "\(minutes) 分钟后重置"
+        self.window.resetCountdown(at: self.now)
+            ?? (self.window.isAwaitingReset(at: self.now) ? "等待额度更新" : "暂不可用")
+    }
+
+    private var resetLabel: String {
+        guard self.window.resetsAt != nil else { return "重置时间" }
+        return self.window.isAwaitingReset(at: self.now) ? "已到重置时间" : "距离重置"
     }
 }
 

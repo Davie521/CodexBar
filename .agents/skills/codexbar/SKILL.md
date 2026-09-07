@@ -1,6 +1,6 @@
 ---
 name: codexbar
-description: "CodexBar read. Provider usage, limits, credits, config health. JSON. No writes."
+description: "Read usage, credits, and config health through the retained full upstream CodexBar CLI; return redacted JSON."
 ---
 
 # CodexBar
@@ -9,8 +9,10 @@ Read CodexBar. Never mutate config/auth.
 
 ## Run
 
+Run from the CodexBar repository root using this skill's bundled wrapper.
+
 ```bash
-skill="${CODEX_HOME:-$HOME/.codex}/skills/codexbar"
+skill=".agents/skills/codexbar"
 "$skill/scripts/codexbar" doctor
 "$skill/scripts/codexbar" providers
 "$skill/scripts/codexbar" usage

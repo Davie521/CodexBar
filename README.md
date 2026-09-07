@@ -2,17 +2,17 @@
 
 This fork of [steipete/CodexBar](https://github.com/steipete/CodexBar) keeps the native menu-bar experience and reduces it to one compact Codex panel.
 
-- One menu-bar item with a quota percentage and the familiar two-bar meter.
-- Session and weekly allowances, remaining/used display, and reset countdowns.
+- One menu-bar item with a weekly quota percentage, a single progress ring, and a compact reset countdown.
+- Weekly remaining/used percentage and a reset countdown side by side, with a slim progress bar and exact local reset date below.
 - Refresh every five minutes, with native refresh and More menu items.
 - An attached `NSMenu`, matching upstream positioning across displays, with a compact 280-point quota card.
 - No third-party dependencies in the default build. No browser import, Keychain access, background history scans, widgets, or updater.
 
-<img src="docs/codexbar-lite-preview.png" width="280" alt="CodexBar Lite quota card with two usage bars and reset countdowns; example data. Native menu actions are outside this card preview." />
+<img src="docs/codexbar-lite-preview.png" width="280" alt="CodexBar Lite weekly quota card with a large percentage, one progress bar, and relative and exact reset times; example data. Native menu actions are outside this card preview." />
 
 The interface uses Simplified Chinese. It follows the account currently signed into Codex, using native `~/.codex/auth.json` (or an inherited `CODEX_HOME`) and the same `chatgpt.com/backend-api/wham/usage` endpoint as upstream. It does not write credentials or refresh tokens. If the login expires, open/sign in to Codex and refresh. API-key/PAT-only and Keychain-only logins are not supported by Lite.
 
-Only the primary session and weekly allowances are shown. Additional model-specific allowances, purchased credits, and organization spending controls remain features of the full upstream app. Missing quota data is shown as unavailable, never as 100% remaining. Failed refreshes clear the previous result; a passed reset time stays marked as awaiting an update until the server confirms it.
+The panel and menu-bar ring show only the account's weekly allowance from `rate_limit`, selected by its seven-day duration. Five-hour and model-specific allowances are hidden. If the account's weekly window is absent, the card shows “暂未提供周额度” and the menu-bar percentage is unavailable; other windows never replace it. The card labels its full countdown “距离重置” and updates every minute. The menu bar uses one abbreviated time unit, such as `94% · 6d`, switching to hours (`h`) or minutes (`m`) as the reset approaches; its tooltip retains the full countdown. Reset dates use the local time zone. Purchased credits and organization spending controls remain features of the full upstream app. Missing quota data is shown as unavailable, never as 100% remaining. Failed refreshes clear the previous result; a passed reset time stays marked as awaiting an update until the server confirms it.
 
 ## Build and run
 
@@ -31,9 +31,14 @@ Tests use synthetic credentials and stub transports; they do not contact a real 
 
 ```sh
 "CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-preview.png
+"CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-dark.png --preview-dark
 ```
 
 To inspect the actual native menu without accessing an account, quit Lite first and run `open "CodexBar Lite.app" --args --demo`. The menu is labeled as example data and manual refresh is disabled. Quit and relaunch without `--demo` to return to your real account.
+
+Use `--demo-additional-limits` instead of `--demo` to preview a response containing a weekly account allowance and additional model limits. The panel still shows only the account's weekly quota and reset time. It also works with `--render-preview /tmp/codexbar-lite-additional.png`; both paths use synthetic data without accessing credentials. Add `--preview-dark` to render either fixture in dark appearance.
+
+<img src="docs/codexbar-lite-additional-preview.png" width="280" alt="Example data: the weekly account quota and reset time, with additional model allowances hidden." />
 
 ## Upstream code
 

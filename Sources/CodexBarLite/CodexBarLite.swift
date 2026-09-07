@@ -10,22 +10,29 @@ enum CodexBarLiteMain {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let arguments = CommandLine.arguments
+        let additionalDemo = arguments.contains("--demo-additional-limits")
         if let index = arguments.firstIndex(of: "--render-preview"), arguments.indices.contains(index + 1) {
-            Self.renderPreview(to: URL(fileURLWithPath: arguments[index + 1]))
+            Self.renderPreview(
+                to: URL(fileURLWithPath: arguments[index + 1]),
+                additionalLimits: additionalDemo,
+                dark: arguments.contains("--preview-dark"))
             return
         }
-        let delegate = AppDelegate(example: arguments.contains("--demo") ? .example() : nil)
+        let example: UsageSnapshot? = arguments.contains("--demo") || additionalDemo
+            ? .example(includingAdditionalLimits: additionalDemo) : nil
+        let delegate = AppDelegate(example: example)
         app.delegate = delegate
         withExtendedLifetime(delegate) { app.run() }
     }
 
     @MainActor
-    private static func renderPreview(to url: URL) {
+    private static func renderPreview(to url: URL, additionalLimits: Bool, dark: Bool) {
         // This path never constructs a live client or reads credentials.
-        let model = UsageModel(client: PreviewClient(), example: .example())
+        NSApplication.shared.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        let model = UsageModel(client: PreviewClient(), example: .example(includingAdditionalLimits: additionalLimits))
         let renderer = ImageRenderer(content: UsagePanel(model: model)
             .background(Color(nsColor: .windowBackgroundColor))
-            .environment(\.colorScheme, .light))
+            .environment(\.colorScheme, dark ? .dark : .light))
         renderer.scale = 2
         guard let image = renderer.nsImage,
               let tiff = image.tiffRepresentation,
@@ -112,39 +119,48 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
 
     private func updateStatusItem() {
         guard let button = self.statusItem?.button else { return }
+        let now = Date.now
         let snapshot = self.model.snapshot
         let window = snapshot?.menuWindow
-        let isFresh = snapshot.map { Date.now.timeIntervalSince($0.fetchedAt) < 600 } ?? false
-        if let window, isFresh, !window.isAwaitingReset(at: .now) {
+        let isFresh = snapshot.map { now.timeIntervalSince($0.fetchedAt) < 600 } ?? false
+        if let window, isFresh, !window.isAwaitingReset(at: now) {
             let percent = self.model.showRemaining ? window.remainingPercent : window.usedPercent
             button.title = " \(Int(percent.rounded()))%"
-            button.toolTip = "Codex · \(window.title)\(self.model.showRemaining ? "剩余" : "已用") \(Int(percent))%"
+            button.toolTip = "Codex · 每周\(self.model.showRemaining ? "剩余" : "已用") \(Int(percent.rounded()))%"
+            if let countdown = window.resetCountdown(at: now, compact: true) {
+                button.title += " · \(countdown)"
+                button.toolTip = (button.toolTip ?? "") + "\n距离重置还有 \(window.resetCountdown(at: now) ?? countdown)"
+            }
         } else {
             button.title = self.model.isRefreshing ? " …" : " —"
             button.toolTip = "Codex · \(self.model.failure?.message ?? "等待额度更新")"
         }
-        button.image = Self.usageIcon(windows: snapshot?.windows ?? [], remaining: self.model.showRemaining)
+        let iconWindow = isFresh && window?.isAwaitingReset(at: now) == false ? window : nil
+        button.image = Self.usageIcon(window: iconWindow, remaining: self.model.showRemaining)
         button.setAccessibilityLabel(button.toolTip)
     }
 
-    private static func usageIcon(windows: [UsageWindow], remaining: Bool) -> NSImage {
-        // Two stacked quota meters preserve CodexBar's compact menu-bar visual language.
+    private static func usageIcon(window: UsageWindow?, remaining: Bool) -> NSImage {
+        // One ring represents the same weekly allowance as the panel.
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-            for index in 0..<2 {
-                let rect = NSRect(x: 1, y: index == 0 ? 10 : 3, width: 16, height: 4)
-                NSColor.labelColor.withAlphaComponent(0.2).setFill()
-                NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
-                if windows.indices.contains(index) {
-                    let window = windows[index]
-                    let percent = remaining ? window.remainingPercent : window.usedPercent
-                    NSColor.labelColor.setFill()
-                    let filled = NSRect(
-                        x: rect.minX,
-                        y: rect.minY,
-                        width: rect.width * percent / 100,
-                        height: rect.height)
-                    NSBezierPath(roundedRect: filled, xRadius: 2, yRadius: 2).fill()
-                }
+            let track = NSBezierPath(ovalIn: NSRect(x: 3, y: 3, width: 12, height: 12))
+            track.lineWidth = 2
+            NSColor.labelColor.withAlphaComponent(0.2).setStroke()
+            track.stroke()
+            if let window {
+                let percent = remaining ? window.remainingPercent : window.usedPercent
+                guard percent > 0 else { return true }
+                let arc = NSBezierPath()
+                arc.lineWidth = 2
+                arc.lineCapStyle = .round
+                arc.appendArc(
+                    withCenter: NSPoint(x: 9, y: 9),
+                    radius: 6,
+                    startAngle: 90,
+                    endAngle: 90 - 360 * percent / 100,
+                    clockwise: true)
+                NSColor.labelColor.setStroke()
+                arc.stroke()
             }
             return true
         }

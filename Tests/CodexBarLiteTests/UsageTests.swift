@@ -102,6 +102,45 @@ private let usageJSON = Data("""
     #expect(snapshot.menuWindow?.title == "每周")
 }
 
+@Test func `menu tracks weekly allowance even when a five hour window is exhausted`() throws {
+    let data = Data("""
+    {"rate_limit":{
+      "primary_window":{"used_percent":100,"limit_window_seconds":18000},
+      "secondary_window":{"used_percent":20,"limit_window_seconds":604800,"reset_at":2000500000}
+    }}
+    """.utf8)
+    let snapshot = try UsageSnapshot.decode(data, now: .now, expectedAccountID: nil)
+    #expect(snapshot.menuWindow?.remainingPercent == 80)
+    #expect(snapshot.menuWindow?.resetsAt == Date(timeIntervalSince1970: 2_000_500_000))
+}
+
+@Test func `missing account weekly allowance never falls back to session or model limits`() throws {
+    let data = Data("""
+    {"rate_limit":{"primary_window":{"used_percent":10,"limit_window_seconds":18000}},
+     "additional_rate_limits":[{
+       "limit_name":"Example model",
+       "rate_limit":{"primary_window":{"used_percent":0,"limit_window_seconds":604800}}
+     }]}
+    """.utf8)
+    let snapshot = try UsageSnapshot.decode(data, now: .now, expectedAccountID: nil)
+    #expect(snapshot.menuWindow == nil)
+}
+
+@Test func `a corrupt reset timestamp drops the countdown without discarding the allowance`() throws {
+    // 1e30 is finite, so it decodes cleanly and only trips on the Int conversion in the countdown.
+    let data = Data("""
+    {"rate_limit":{"primary_window":{"used_percent":20,"limit_window_seconds":604800,"reset_at":1e30}}}
+    """.utf8)
+    let now = Date(timeIntervalSince1970: 0)
+    let snapshot = try UsageSnapshot.decode(data, now: now, expectedAccountID: nil)
+    let window = try #require(snapshot.menuWindow)
+    #expect(window.remainingPercent == 80)
+    #expect(window.resetsAt == nil)
+    #expect(window.resetCountdown(at: now) == nil)
+    #expect(window.resetCountdown(at: now, compact: true) == nil)
+    #expect(window.isAwaitingReset(at: now) == false)
+}
+
 @Test func `crossing a reset requires confirmation instead of resetting the number`() {
     let now = Date(timeIntervalSince1970: 1_900_000_000)
     let window = UsageWindow(id: "primary", usedPercent: 90, duration: 18000, resetsAt: now)
