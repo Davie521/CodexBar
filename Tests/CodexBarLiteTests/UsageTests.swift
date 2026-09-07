@@ -141,6 +141,21 @@ private let usageJSON = Data("""
     #expect(window.isAwaitingReset(at: now) == false)
 }
 
+@Test func `a stale snapshot is never presented as the current allowance`() {
+    let fetched = Date(timeIntervalSince1970: 1_900_000_000)
+    let snapshot = UsageSnapshot(
+        plan: "Pro",
+        windows: [UsageWindow(id: "secondary", usedPercent: 0, duration: 604_800, resetsAt: nil)],
+        fetchedAt: fetched)
+    // An untouched weekly allowance is exactly the case that reads as a full bar once it goes
+    // stale, so the menu bar and the card have to agree on the same window.
+    #expect(snapshot.menuWindow?.remainingPercent == 100)
+    #expect(snapshot.isFresh(at: fetched))
+    #expect(snapshot.isFresh(at: fetched.addingTimeInterval(UsageSnapshot.freshnessWindow - 1)))
+    #expect(snapshot.isFresh(at: fetched.addingTimeInterval(UsageSnapshot.freshnessWindow)) == false)
+    #expect(snapshot.isFresh(at: fetched.addingTimeInterval(86400)) == false)
+}
+
 @Test func `crossing a reset requires confirmation instead of resetting the number`() {
     let now = Date(timeIntervalSince1970: 1_900_000_000)
     let window = UsageWindow(id: "primary", usedPercent: 90, duration: 18000, resetsAt: now)

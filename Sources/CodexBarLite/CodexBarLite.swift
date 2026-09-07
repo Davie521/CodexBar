@@ -122,7 +122,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         let now = Date.now
         let snapshot = self.model.snapshot
         let window = snapshot?.menuWindow
-        let isFresh = snapshot.map { now.timeIntervalSince($0.fetchedAt) < 600 } ?? false
+        let isFresh = snapshot?.isFresh(at: now) ?? false
         if let window, isFresh, !window.isAwaitingReset(at: now) {
             let percent = self.model.showRemaining ? window.remainingPercent : window.usedPercent
             button.title = " \(Int(percent.rounded()))%"

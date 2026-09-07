@@ -27,7 +27,14 @@ struct UsagePanel: View {
                     }
                 }
 
-                if let window = self.model.snapshot?.menuWindow {
+                if let snapshot = self.model.snapshot, !snapshot.isFresh(at: context.date) {
+                    // A stale percentage must not read as the current allowance — an untouched
+                    // quota would otherwise sit at 100% and a full bar long after it went stale.
+                    Text("额度已过期，等待更新")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                } else if let window = self.model.snapshot?.menuWindow {
                     WeeklyQuotaView(window: window, showRemaining: self.model.showRemaining, now: context.date)
                 } else if self.model.snapshot != nil {
                     Text("暂未提供周额度")

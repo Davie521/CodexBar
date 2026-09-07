@@ -88,6 +88,15 @@ public struct UsageSnapshot: Equatable, Sendable {
         self.fetchedAt = fetchedAt
     }
 
+    /// A snapshot older than this stops being presented as the current allowance. The menu bar and
+    /// the panel must share one definition — when they drifted apart, the status item rejected a
+    /// stale snapshot while the card still rendered its percentage as if it were current.
+    public static let freshnessWindow: TimeInterval = 600
+
+    public func isFresh(at date: Date) -> Bool {
+        date.timeIntervalSince(self.fetchedAt) < Self.freshnessWindow
+    }
+
     public var menuWindow: UsageWindow? {
         // The Lite panel and menu bar track only the account's weekly allowance.
         self.windows.first { $0.duration == 604_800 }
