@@ -13,6 +13,11 @@ These notes apply to the retained full app. The default Lite workflow is in [AGE
 
 - Full app sources live in `Sources/CodexBar`; provider/parser tests live in `Tests/CodexBarTests`.
 - Select the full package with `CODEXBAR_FULL=1`. Use `make test-full` for the sharded suite and `make check-full` for full formatting/lint checks before handing off full-app code changes. Add focused full-package `swift test --filter ...` runs when they help diagnose parser/provider fixes.
+- Full-build dependency versions are pinned with `exact:` in `Package.swift`, including the
+  otherwise transitive `swift-asn1`. There is no committed lockfile: `Package.swift` returns a
+  different package per `CODEXBAR_FULL`, SwiftPM keeps one `Package.resolved` slot, and it
+  discards a lockfile whose `originHash` does not match the manifest being evaluated. Bump a
+  dependency by editing its pin here, then re-resolve and run `make check-full`.
 - XCTest files use `FeatureNameTests` and `test_caseDescription` methods. Preserve the root Swift and credential constraints.
 - Use focused CLI/parser/settings tests when they can prove the behavior. Avoid packaging or relaunching merely to validate logic.
 - App-group migration tests must inject dictionary-backed defaults, both snapshot URLs, a synthetic home and a contained recording FileManager. UUID defaults suites and Keychain isolation flags do not isolate defaults search domains or filesystem access. Ordinary SettingsStore tests must not discover shared defaults or run app-group migration.
