@@ -155,9 +155,11 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         guard let usage = self.model.accounts.first?.usage else { return }
         let snapshot = usage.snapshot
         let isFresh = snapshot?.isFresh(at: now) ?? false
-        let slots: [UsageWindow?] = isFresh
+        // Without a five-hour allowance the icon has a single weekly lane.
+        let lanes: [UsageWindow?] = snapshot?.sessionWindow != nil
             ? [snapshot?.sessionWindow, snapshot?.weeklyWindow]
-            : [nil, nil]
+            : [snapshot?.weeklyWindow]
+        let slots: [UsageWindow?] = isFresh ? lanes : lanes.map { _ in nil }
         let currentWindows: [UsageWindow] = slots.compactMap { window -> UsageWindow? in
             guard let window, !window.isAwaitingReset(at: now) else { return nil }
             return window
@@ -195,7 +197,10 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
         for (index, entry) in self.model.accounts.enumerated() {
             if index > 0 { title.append(NSAttributedString(string: "  ")) }
             let snapshot = entry.usage.snapshot.flatMap { $0.isFresh(at: now) ? $0 : nil }
-            let windows = [snapshot?.sessionWindow, snapshot?.weeklyWindow].map { window in
+            let lanes = snapshot?.sessionWindow != nil
+                ? [snapshot?.sessionWindow, snapshot?.weeklyWindow]
+                : [snapshot?.weeklyWindow]
+            let windows = lanes.map { window in
                 window.flatMap { $0.isAwaitingReset(at: now) ? nil : $0 }
             }
             let attachment = NSTextAttachment()
@@ -249,11 +254,14 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
 
     private static func usageIcon(windows: [UsageWindow?], remaining: Bool) -> NSImage {
         // Match Claude's compact visual language: top is the five-hour window, bottom is weekly.
+        // A single lane (weekly only) is drawn centered and slightly thicker.
+        let laneRects = windows.count == 1
+            ? [NSRect(x: 1, y: 6, width: 16, height: 6)]
+            : [NSRect(x: 1, y: 10, width: 16, height: 4), NSRect(x: 1, y: 3, width: 16, height: 4)]
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
-            for index in 0..<2 {
-                let rect = NSRect(x: 1, y: index == 0 ? 10 : 3, width: 16, height: 4)
+            for (index, rect) in laneRects.enumerated() {
                 NSColor.labelColor.withAlphaComponent(0.2).setFill()
-                NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+                NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
                 guard windows.indices.contains(index), let window = windows[index] else { continue }
                 let percent = remaining ? window.remainingPercent : window.usedPercent
                 guard percent > 0 else { continue }
@@ -263,7 +271,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate
                     y: rect.minY,
                     width: rect.width * percent / 100,
                     height: rect.height)
-                NSBezierPath(roundedRect: filled, xRadius: 2, yRadius: 2).fill()
+                NSBezierPath(roundedRect: filled, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
             }
             return true
         }

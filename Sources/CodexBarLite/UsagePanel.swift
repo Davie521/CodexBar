@@ -14,6 +14,8 @@ struct UsagePanel: View {
                     CompactAccountRow(
                         entry: entry,
                         color: index.isMultiple(of: 2) ? .green : .blue,
+                        showsLabel: self.model.accounts.count > 1,
+                        showsSession: self.showsSession,
                         showRemaining: self.model.showRemaining,
                         now: context.date)
                 }
@@ -31,11 +33,18 @@ struct UsagePanel: View {
             .fixedSize(horizontal: false, vertical: true)
         }
     }
+
+    /// Accounts without a five-hour allowance get no five-hour column; rows stay aligned across accounts.
+    private var showsSession: Bool {
+        self.model.accounts.contains { $0.usage.snapshot?.sessionWindow != nil }
+    }
 }
 
 private struct CompactAccountRow: View {
     let entry: AccountUsage
     let color: Color
+    let showsLabel: Bool
+    let showsSession: Bool
     let showRemaining: Bool
     let now: Date
 
@@ -46,20 +55,24 @@ private struct CompactAccountRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 6) {
-                Circle().fill(self.color).frame(width: 7, height: 7)
-                    .accessibilityHidden(true)
-                Text(self.entry.account.label)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
+            if self.showsLabel {
+                HStack(spacing: 6) {
+                    Circle().fill(self.color).frame(width: 7, height: 7)
+                        .accessibilityHidden(true)
+                    Text(self.entry.account.label)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .frame(width: 30, alignment: .leading)
             }
-            .frame(width: 30, alignment: .leading)
             if let snapshot = self.snapshot, !snapshot.windows.isEmpty {
-                CompactQuotaValue(
-                    title: "5h",
-                    window: snapshot.sessionWindow,
-                    showRemaining: self.showRemaining,
-                    now: self.now)
+                if self.showsSession {
+                    CompactQuotaValue(
+                        title: "5h",
+                        window: snapshot.sessionWindow,
+                        showRemaining: self.showRemaining,
+                        now: self.now)
+                }
                 CompactQuotaValue(
                     title: "周",
                     window: snapshot.weeklyWindow,
