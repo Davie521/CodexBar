@@ -8,7 +8,6 @@ public final class UsageModel {
     public private(set) var failure: UsageFailure?
     public private(set) var isRefreshing = false
     public let isExample: Bool
-    public var showRemaining = true
     private let client: any UsageFetching
 
     public init(client: any UsageFetching, example: UsageSnapshot? = nil) {

@@ -2,17 +2,19 @@
 
 This fork of [steipete/CodexBar](https://github.com/steipete/CodexBar) keeps the native menu-bar experience and reduces it to one compact Codex panel.
 
-- One menu-bar item with a weekly quota percentage, a single progress ring, and a compact reset countdown.
-- Weekly remaining/used percentage and a reset countdown side by side, with a slim progress bar and exact local reset date below.
+- One menu-bar item: single-account percentages, or a small two-bar meter and reset countdown for each of accounts A and B.
+- Claude-style compact account rows: identity dot, A/B label, five-hour and weekly percentages, and reset countdown.
 - Refresh every five minutes, with native refresh and More menu items.
-- An attached `NSMenu`, matching upstream positioning across displays, with a compact 280-point quota card.
+- An attached `NSMenu`, 420 points wide, with one 26-point row per account. Plan, config directory, exact reset times, and update time are available on hover.
 - No third-party dependencies in the default build. No browser import, Keychain access, background history scans, widgets, or updater.
 
-<img src="docs/codexbar-lite-preview.png" width="280" alt="CodexBar Lite weekly quota card with a large percentage, one progress bar, and relative and exact reset times; example data. Native menu actions are outside this card preview." />
+<img src="docs/codexbar-lite-preview.png" width="420" alt="Compact CodexBar Lite account row with five-hour and weekly percentages and reset countdown; example data. Native menu actions are outside this preview." />
 
-The interface uses Simplified Chinese. It follows the account currently signed into Codex, using native `~/.codex/auth.json` (or an inherited `CODEX_HOME`) and the same `chatgpt.com/backend-api/wham/usage` endpoint as upstream. It does not write credentials or refresh tokens. If the login expires, open/sign in to Codex and refresh. API-key/PAT-only and Keychain-only logins are not supported by Lite.
+The interface uses Simplified Chinese. It reads account A from `~/.codex/auth.json` and also account B from `~/.codex-b/auth.json` when that directory exists (this machine currently uses only `~/.codex`). Inherited `CX_ACCOUNT_A_HOME` and `CX_ACCOUNT_B_HOME` override those homes. Empty overrides use the defaults. An inherited custom `CODEX_HOME` is preserved (single account A when no A/B home is configured, otherwise account C alongside them), and duplicate directories, including symlink aliases, are collapsed. Paths are discovered at launch; restart after adding another directory. Each account has its own quota request and error state, using the same `chatgpt.com/backend-api/wham/usage` endpoint as upstream. It does not write credentials or refresh tokens. If a login expires, sign in using that account’s CLI home (`cx login` in this setup), then refresh. Opening the desktop app does not switch or repair the other CLI home. API-key/PAT-only and Keychain-only logins are not supported by Lite.
 
-The panel and menu-bar ring show only the account's weekly allowance from `rate_limit`, selected by its seven-day duration. Five-hour and model-specific allowances are hidden. If the account's weekly window is absent, the card shows “暂未提供周额度” and the menu-bar percentage is unavailable; other windows never replace it. The card labels its full countdown “距离重置” and updates every minute. The menu bar uses one abbreviated time unit, such as `94% · 6d`, switching to hours (`h`) or minutes (`m`) as the reset approaches; its tooltip retains the full countdown. Reset dates use the local time zone. Purchased credits and organization spending controls remain features of the full upstream app. Missing quota data is shown as unavailable, never as 100% remaining. Failed refreshes clear the previous result; a passed reset time stays marked as awaiting an update until the server confirms it. A snapshot older than ten minutes — two missed refresh intervals — stops being presented as current: the card and the menu bar both fall back to awaiting an update rather than repeating a stale percentage.
+The panel and menu-bar meter show the account's five-hour and weekly allowances from `rate_limit`, selected by their actual durations even if the service swaps the primary and secondary fields. For a single account, the menu-bar text labels both values compactly (for example, `5h 72% · 周 54%`), while the tooltip retains the full reset countdowns. With multiple accounts, the menu bar shows each account’s two-bar meter and labeled reset countdown (for example, `A 5d` and `B 2d`). The menu uses aligned five-hour and weekly columns; all available account windows and exact reset dates remain in the tooltip. A missing weekly allowance stays unavailable. If an account has no five-hour allowance (for example, a weekly-only plan), its menu-bar meter shows a single weekly bar. The menu drops the five-hour column when no account has that allowance; with mixed plans the column stays for alignment and shows `—` for the weekly-only account. A single account's row also omits the A label. Model-specific allowances are still hidden. Reset dates use the local time zone. Purchased credits and organization spending controls remain features of the full upstream app. Missing quota data is shown as unavailable, never as 100% remaining. Failed refreshes clear the previous result; a passed reset time stays marked as awaiting an update until the server confirms it. A snapshot older than ten minutes — two missed refresh intervals — stops being presented as current: the card and the menu bar both fall back to awaiting an update rather than repeating a stale percentage.
+
+<img src="docs/codexbar-lite-accounts-preview.png" width="420" alt="Offline example of two compact account rows, A and B, matching the Claude menu density." />
 
 ## Build and run
 
@@ -32,13 +34,14 @@ Tests use synthetic credentials and stub transports; they do not contact a real 
 ```sh
 "CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-preview.png
 "CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-dark.png --preview-dark
+"CodexBar Lite.app/Contents/MacOS/CodexBarLite" --render-preview /tmp/codexbar-lite-accounts.png --demo-accounts
 ```
 
 To inspect the actual native menu without accessing an account, quit Lite first and run `open "CodexBar Lite.app" --args --demo`. The menu is labeled as example data and manual refresh is disabled. Quit and relaunch without `--demo` to return to your real account.
 
-Use `--demo-additional-limits` instead of `--demo` to preview a response containing a weekly account allowance and additional model limits. The panel still shows only the account's weekly quota and reset time. It also works with `--render-preview /tmp/codexbar-lite-additional.png`; both paths use synthetic data without accessing credentials. Add `--preview-dark` to render either fixture in dark appearance.
+Use `--demo-additional-limits` instead of `--demo` to preview a response containing a weekly account allowance and additional model limits. The panel shows the available account window while keeping the model-specific allowances hidden. It also works with `--render-preview /tmp/codexbar-lite-additional.png`; both paths use synthetic data without accessing credentials. Add `--preview-dark` to render either fixture in dark appearance.
 
-<img src="docs/codexbar-lite-additional-preview.png" width="280" alt="Example data: the weekly account quota and reset time, with additional model allowances hidden." />
+<img src="docs/codexbar-lite-additional-preview.png" width="420" alt="Example data: the available account quota and reset time, with additional model allowances hidden." />
 
 ## Upstream code
 

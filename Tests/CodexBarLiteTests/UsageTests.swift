@@ -17,6 +17,8 @@ private let usageJSON = Data("""
     #expect(snapshot.windows.map(\.remainingPercent) == [72, 54])
     #expect(snapshot.windows.map(\.title) == ["5 小时", "每周"])
     #expect(snapshot.windows.first?.resetsAt == Date(timeIntervalSince1970: 2_000_000_000))
+    #expect(snapshot.sessionWindow?.remainingPercent == 72)
+    #expect(snapshot.weeklyWindow?.remainingPercent == 54)
 }
 
 @Test func `weekly primary is not presented as five hour usage`() throws {
@@ -38,6 +40,8 @@ private let usageJSON = Data("""
     """.utf8)
     let snapshot = try UsageSnapshot.decode(data, now: .now, expectedAccountID: nil)
     #expect(snapshot.windows.map(\.usedPercent) == [20, 75])
+    #expect(snapshot.sessionWindow?.usedPercent == 20)
+    #expect(snapshot.weeklyWindow?.usedPercent == 75)
 }
 
 @Test func `malformed optional window preserves the other quota`() throws {

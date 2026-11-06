@@ -97,9 +97,18 @@ public struct UsageSnapshot: Equatable, Sendable {
         date.timeIntervalSince(self.fetchedAt) < Self.freshnessWindow
     }
 
-    public var menuWindow: UsageWindow? {
-        // The Lite panel and menu bar track only the account's weekly allowance.
+    public var sessionWindow: UsageWindow? {
+        self.windows.first { $0.duration == 18000 }
+    }
+
+    public var weeklyWindow: UsageWindow? {
         self.windows.first { $0.duration == 604_800 }
+    }
+
+    public var menuWindow: UsageWindow? {
+        // Kept as the weekly headline for compatibility. The Lite UI renders both standard
+        // account windows through `sessionWindow` and `weeklyWindow`.
+        self.weeklyWindow
     }
 
     public static func decode(_ data: Data, now: Date, expectedAccountID: String?) throws -> UsageSnapshot {
