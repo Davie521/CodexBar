@@ -43,10 +43,11 @@ public struct CodexAccount: Identifiable, Equatable, Sendable {
             accounts.append(second)
         }
         if let override = configuredPath("CODEX_HOME") {
-            let inherited = account(accounts.count == 1 ? "A" : "C", path: override)
+            // A custom CODEX_HOME replaces only the implicit default A; an explicitly configured A is kept.
+            let replacesDefaultA = accounts.count == 1 && firstPath == nil
+            let inherited = account(replacesDefaultA ? "A" : "C", path: override)
             if !accounts.contains(where: { $0.id == inherited.id }) {
-                // Preserve a custom CODEX_HOME as the single account when no A/B setup exists.
-                if accounts.count == 1 { accounts = [] }
+                if replacesDefaultA { accounts = [] }
                 accounts.append(inherited)
             }
         }

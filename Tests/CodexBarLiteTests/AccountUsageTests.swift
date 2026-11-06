@@ -59,6 +59,15 @@ func `empty CLI overrides fall back to both default homes`(empty: String) {
     #expect(single.map(\.label) == ["A"])
 }
 
+@Test func `an explicit A home is kept when a different CODEX_HOME is inherited`() {
+    let accounts = CodexAccount.discover(
+        home: URL(fileURLWithPath: "/synthetic-home"),
+        environment: ["CX_ACCOUNT_A_HOME": "~/first", "CODEX_HOME": "~/other"],
+        directoryExists: { _ in false })
+    #expect(accounts.map(\.home.path) == ["/synthetic-home/first", "/synthetic-home/other"])
+    #expect(accounts.map(\.label) == ["A", "C"])
+}
+
 @Test func `an additional inherited home is preserved beside configured accounts`() {
     let accounts = CodexAccount.discover(
         home: URL(fileURLWithPath: "/synthetic-home"),
